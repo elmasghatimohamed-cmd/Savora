@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
     const [formData, setFormData] = useState({
@@ -9,6 +10,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const { login, error: authError } = useAuth();
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -24,26 +26,11 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // Store token and user data
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                navigate('/plates');
-            } else {
-                setError(data.message || 'Login failed');
-            }
+            await login(formData.email, formData.password);
+            navigate('/plates');
         } catch (err) {
-            setError('Network error. Please try again.', err);
+            const message = err?.response?.data?.message || authError || 'Login failed';
+            setError(message);
         } finally {
             setLoading(false);
         }

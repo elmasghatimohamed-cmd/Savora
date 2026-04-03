@@ -14,7 +14,6 @@ export default function Register() {
 
     const dietaryOptions = [
         { id: 'vegan', label: 'Vegan' },
-        { id: 'vegetarian', label: 'Vegetarian' },
         { id: 'gluten_free', label: 'Gluten Free' },
         { id: 'dairy_free', label: 'Dairy Free' },
         { id: 'nut_free', label: 'Nut Free' },
@@ -45,10 +44,11 @@ export default function Register() {
         setError('');
 
         try {
-            const response = await fetch('/api/auth/register', {
+            const response = await fetch('http://127.0.0.1:8000/api/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
@@ -60,8 +60,8 @@ export default function Register() {
             } else {
                 setError(data.message || 'Registration failed');
             }
-        } catch (err) {
-            setError('Network error. Please try again.', err);
+        } catch {
+            setError('Network error. Please try again.');
         } finally {
             setLoading(false);
         }
