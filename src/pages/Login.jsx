@@ -1,38 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+    email: z.string().email('Email invalide'),
+    password: z.string().min(8, 'Minimum 8 caractères')
+});
 
 export default function Login() {
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    });
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const { login, error: authError } = useAuth();
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isValid, isSubmitting }
+    } = useForm({
+        resolver: zodResolver(loginSchema),
+        mode: 'onChange',
+        defaultValues: {
+            email: '',
+            password: ''
+        }
+    });
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+    const onSubmit = async (data) => {
         setError('');
 
         try {
-            await login(formData.email, formData.password);
+            await login(data.email, data.password);
             navigate('/plates');
         } catch (err) {
             const message = err?.response?.data?.message || authError || 'Login failed';
             setError(message);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -44,18 +48,17 @@ export default function Login() {
                     <p>Sign in to your Savora account</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="auth-form">
+                <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
                     <div className="form-group">
                         <label htmlFor="email">Email Address</label>
                         <input
                             type="email"
                             id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
+                            className={errors.email ? 'invalid' : ''}
+                            {...register('email')}
                             placeholder="Enter your email"
                         />
+                        {errors.email && <p className="field-error">{errors.email.message}</p>}
                     </div>
 
                     <div className="form-group">
@@ -63,12 +66,11 @@ export default function Login() {
                         <input
                             type="password"
                             id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
+                            className={errors.password ? 'invalid' : ''}
+                            {...register('password')}
                             placeholder="Enter your password"
                         />
+                        {errors.password && <p className="field-error">{errors.password.message}</p>}
                     </div>
 
                     {error && <div className="error-message">{error}</div>}
@@ -76,9 +78,9 @@ export default function Login() {
                     <button
                         type="submit"
                         className="auth-button"
-                        disabled={loading}
+                        disabled={!isValid || isSubmitting}
                     >
-                        {loading ? 'Signing In...' : 'Sign In'}
+                        {isSubmitting ? 'Signing In...' : 'Sign In'}
                     </button>
                 </form>
 

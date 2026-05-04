@@ -1,46 +1,57 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+const dietaryOptions = [
+    { id: 'vegan', label: 'Vegan' },
+    { id: 'gluten_free', label: 'Gluten Free' },
+    { id: 'dairy_free', label: 'Dairy Free' },
+    { id: 'nut_free', label: 'Nut Free' },
+    { id: 'halal', label: 'Halal' },
+    { id: 'kosher', label: 'Kosher' }
+];
+
+const registerSchema = z
+    .object({
+        name: z.string().min(1, 'Le nom est requis'),
+        email: z.string().email('Email invalide'),
+        password: z.string().min(8, 'Minimum 8 caractères'),
+        confirmPassword: z.string().min(8, 'Confirmation requise'),
+        dietary_tags: z.array(z.string()).optional()
+    })
+    .superRefine(({ password, confirmPassword }, ctx) => {
+        if (password !== confirmPassword) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['confirmPassword'],
+                message: 'Les mots de passe doivent correspondre'
+            });
+        }
+    });
 
 export default function Register() {
-    const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        dietary_tags: []
-    });
-    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
 
-    const dietaryOptions = [
-        { id: 'vegan', label: 'Vegan' },
-        { id: 'gluten_free', label: 'Gluten Free' },
-        { id: 'dairy_free', label: 'Dairy Free' },
-        { id: 'nut_free', label: 'Nut Free' },
-        { id: 'halal', label: 'Halal' },
-        { id: 'kosher', label: 'Kosher' }
-    ];
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isValid, isSubmitting }
+    } = useForm({
+        resolver: zodResolver(registerSchema),
+        mode: 'onChange',
+        defaultValues: {
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: '',
+            dietary_tags: []
+        }
+    });
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-
-    const handleTagToggle = (tag) => {
-        setFormData(prev => ({
-            ...prev,
-            dietary_tags: prev.dietary_tags.includes(tag)
-                ? prev.dietary_tags.filter(t => t !== tag)
-                : [...prev.dietary_tags, tag]
-        }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
+    const onSubmit = async (data) => {
         setError('');
 
         try {
@@ -50,20 +61,23 @@ export default function Register() {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    name: data.name,
+                    email: data.email,
+                    password: data.password,
+                    dietary_tags: data.dietary_tags ?? []
+                })
             });
 
-            const data = await response.json();
+            const responseData = await response.json();
 
             if (response.ok) {
                 navigate('/login');
             } else {
-                setError(data.message || 'Registration failed');
+                setError(responseData.message || 'Registration failed');
             }
         } catch {
             setError('Network error. Please try again.');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -75,18 +89,17 @@ export default function Register() {
                     <p>Join Savora today</p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="auth-form">
+                <form onSubmit={handleSubmit(onSubmit)} className="auth-form">
                     <div className="form-group">
                         <label htmlFor="name">Full Name</label>
                         <input
                             type="text"
                             id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            required
+                            className={errors.name ? 'invalid' : ''}
+                            {...register('name')}
                             placeholder="Enter your full name"
                         />
+                        {errors.name && <p className="field-error">{errors.name.message}</p>}
                     </div>
 
                     <div className="form-group">
@@ -94,12 +107,11 @@ export default function Register() {
                         <input
                             type="email"
                             id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
+                            className={errors.email ? 'invalid' : ''}
+                            {...register('email')}
                             placeholder="Enter your email"
                         />
+                        {errors.email && <p className="field-error">{errors.email.message}</p>}
                     </div>
 
                     <div className="form-group">
@@ -107,24 +119,34 @@ export default function Register() {
                         <input
                             type="password"
                             id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                            placeholder="Create a password (min 6 characters)"
-                            minLength="6"
+                            className={errors.password ? 'invalid' : ''}
+                            {...register('password')}
+                            placeholder="Create a password (min 8 characters)"
                         />
+                        {errors.password && <p className="field-error">{errors.password.message}</p>}
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="confirmPassword">Confirm Password</label>
+                        <input
+                            type="password"
+                            id="confirmPassword"
+                            className={errors.confirmPassword ? 'invalid' : ''}
+                            {...register('confirmPassword')}
+                            placeholder="Confirm your password"
+                        />
+                        {errors.confirmPassword && <p className="field-error">{errors.confirmPassword.message}</p>}
                     </div>
 
                     <div className="form-group">
                         <label>Dietary Preferences (Optional)</label>
                         <div className="dietary-tags">
-                            {dietaryOptions.map(option => (
+                            {dietaryOptions.map((option) => (
                                 <label key={option.id} className="tag-checkbox">
                                     <input
                                         type="checkbox"
-                                        checked={formData.dietary_tags.includes(option.id)}
-                                        onChange={() => handleTagToggle(option.id)}
+                                        value={option.id}
+                                        {...register('dietary_tags')}
                                     />
                                     <span className="tag-label">{option.label}</span>
                                 </label>
@@ -137,9 +159,9 @@ export default function Register() {
                     <button
                         type="submit"
                         className="auth-button"
-                        disabled={loading}
+                        disabled={!isValid || isSubmitting}
                     >
-                        {loading ? 'Creating Account...' : 'Sign Up'}
+                        {isSubmitting ? 'Creating Account...' : 'Sign Up'}
                     </button>
                 </form>
 

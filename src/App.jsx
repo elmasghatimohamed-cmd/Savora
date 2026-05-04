@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -35,6 +36,7 @@ export default function App() {
           />
         </Routes>
       </BrowserRouter>
+      <Toaster position="top-right" />
     </AuthProvider>
   );
 }
